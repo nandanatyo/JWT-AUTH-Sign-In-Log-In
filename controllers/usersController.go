@@ -5,6 +5,7 @@ import (
 	"auth/models"
 	"net/http"
 	"os"
+	"regexp"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -21,11 +22,31 @@ func Signup(c *gin.Context) {
 		Password string
 	}
 
+	//Bind the body
 	if c.Bind(&body) != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Fqiled to read body"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to read body"})
 
 		return
 	}
+
+	// Validate password
+    if len(body.Password) < 8 || len(body.Password) > 12 {
+        c.JSON(http.StatusBadRequest, gin.H{"error": "Password must be at least 8-12 characters long"})
+        return
+    }
+
+    // Check if password contains at least one letter and one number
+    matched, _ := regexp.MatchString(`(?i)[a-z]+`, body.Password)
+    if !matched {
+        c.JSON(http.StatusBadRequest, gin.H{"error": "Password must contain at least one letter"})
+        return
+    }
+    matched, _ = regexp.MatchString(`\d+`, body.Password)
+    if !matched {
+        c.JSON(http.StatusBadRequest, gin.H{"error": "Password must contain at least one number"})
+        return
+    }
+
 	//Hash the password
 	hash, err := bcrypt.GenerateFromPassword([]byte(body.Password), 10)
 
@@ -39,6 +60,7 @@ func Signup(c *gin.Context) {
 
 	if result.Error != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to create user"})
+		return
 	}
 
 	//Respond
